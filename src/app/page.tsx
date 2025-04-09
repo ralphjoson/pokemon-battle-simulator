@@ -71,6 +71,7 @@ export default function Home() {
   const [filteredA, setFilteredA] = useState<NamedAPIResource[]>([]);
   const [filteredB, setFilteredB] = useState<NamedAPIResource[]>([]);
   const { getTypeEffectiveness } = useTypeEffectiveness();
+  const [isSimulating, setIsSimulating] = useState(false);
 
   useEffect(() => {
     const fetchAllPokemon = async () => {
@@ -91,6 +92,10 @@ export default function Home() {
     );
     setFiltered(filtered.slice(0, 10));
   };
+
+  useEffect(() => {
+    console.log("state", state);
+  }, [state]);
 
   return (
     <div className="min-h-screen bg-gray-100 p-6 text-center">
@@ -129,24 +134,31 @@ export default function Home() {
       </div>
 
       <button
-        onClick={() =>
-          handleStartBattle({
+        onClick={async () => {
+          setIsSimulating(true); // disable immediately
+          await handleStartBattle({
             selection,
             getTypeEffectiveness,
             dispatch,
             simulateTurn,
-          })
-        }
-        className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded mb-6"
+          });
+          setIsSimulating(false); // re-enable when done
+        }}
+        disabled={isSimulating}
+        className={`px-4 py-2 rounded mb-6 font-semibold text-white ${
+          isSimulating
+            ? "bg-gray-400 cursor-not-allowed"
+            : "bg-blue-600 hover:bg-blue-700"
+        }`}
       >
-        Begin Simulation
+        {isSimulating ? "Simulating..." : "Begin Simulation"}
       </button>
 
       {state.loading && <p>Loading Pokémon...</p>}
       {state.error && <p className="text-red-500">{state.error}</p>}
 
       {state.pokemonA && state.pokemonB && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6 max-w-[780px] mx-auto">
           {[
             { p: state.pokemonA, hp: state.hpA, maxHp: state.maxHpA },
             { p: state.pokemonB, hp: state.hpB, maxHp: state.maxHpB },
