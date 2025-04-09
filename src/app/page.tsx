@@ -84,7 +84,7 @@ export default function Home() {
 
         <PokemonSelector
           label="Select Pokémon B"
-          value={selection.a}
+          value={selection.b}
           onChange={(val) => setSelection({ ...selection, b: val })}
           onSelect={(name) => setSelection({ ...selection, b: name })}
           allPokemon={allPokemon}
@@ -118,10 +118,10 @@ export default function Home() {
       {state.pokemonA && state.pokemonB && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6 max-w-[780px] mx-auto">
           {[
-            { p: state.pokemonA, hp: state.hpA, maxHp: state.maxHpA },
-            { p: state.pokemonB, hp: state.hpB, maxHp: state.maxHpB },
-          ].map(({ p, hp, maxHp }) => (
-            <PokemonCard key={p.name} p={p} hp={hp} maxHp={maxHp} />
+            { id: "A", p: state.pokemonA, hp: state.hpA, maxHp: state.maxHpA },
+            { id: "B", p: state.pokemonB, hp: state.hpB, maxHp: state.maxHpB },
+          ].map(({ id, p, hp, maxHp }) => (
+            <PokemonCard key={`${p.name}-${id}`} p={p} hp={hp} maxHp={maxHp} />
           ))}
         </div>
       )}
