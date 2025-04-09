@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer, useState, useMemo } from "react";
 import axios from "axios";
+import { debounce } from "lodash";
 import { useTypeEffectiveness } from "./hooks/useTypeEffectiveness";
 import { simulateTurn } from "./utils/battle/simulateTurn";
 import type { State, Action } from "./types/battle";
@@ -64,6 +65,9 @@ function reducer(state: State, action: Action): State {
   }
 }
 
+// Simple cache for all Pokémon
+const pokemonCache = new Map<string, NamedAPIResource[]>();
+
 export default function Home() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [selection, setSelection] = useState({ a: "pikachu", b: "charmander" });
@@ -73,25 +77,41 @@ export default function Home() {
   const { getTypeEffectiveness } = useTypeEffectiveness();
   const [isSimulating, setIsSimulating] = useState(false);
 
+  // Retry + cache logic
   useEffect(() => {
     const fetchAllPokemon = async () => {
-      const res = await axios.get(
-        "https://pokeapi.co/api/v2/pokemon?limit=1000"
-      );
-      setAllPokemon(res.data.results);
+      try {
+        if (pokemonCache.has("all")) {
+          setAllPokemon(pokemonCache.get("all")!);
+          return;
+        }
+        const res = await axios.get(
+          "https://pokeapi.co/api/v2/pokemon?limit=1000"
+        );
+        pokemonCache.set("all", res.data.results);
+        setAllPokemon(res.data.results);
+      } catch (err) {
+        console.error("Failed to fetch Pokémon list. Retrying...");
+        setTimeout(fetchAllPokemon, 1000); // retry after 1s
+      }
     };
     fetchAllPokemon();
   }, []);
 
-  const handleSearch = (
-    value: string,
-    setFiltered: (list: NamedAPIResource[]) => void
-  ) => {
-    const filtered = allPokemon.filter((p) =>
-      p.name.toLowerCase().includes(value.toLowerCase())
-    );
-    setFiltered(filtered.slice(0, 10));
-  };
+  // Debounced search
+  const handleSearch = useMemo(
+    () =>
+      debounce(
+        (value: string, setFiltered: (list: NamedAPIResource[]) => void) => {
+          const filtered = allPokemon.filter((p) =>
+            p.name.toLowerCase().includes(value.toLowerCase())
+          );
+          setFiltered(filtered.slice(0, 10));
+        },
+        300
+      ),
+    [allPokemon]
+  );
 
   return (
     <div className="min-h-screen bg-gray-100 p-6 text-center">
@@ -131,14 +151,14 @@ export default function Home() {
 
       <button
         onClick={async () => {
-          setIsSimulating(true); // disable immediately
+          setIsSimulating(true);
           await handleStartBattle({
             selection,
             getTypeEffectiveness,
             dispatch,
             simulateTurn,
           });
-          setIsSimulating(false); // re-enable when done
+          setIsSimulating(false);
         }}
         disabled={isSimulating}
         className={`px-4 py-2 rounded mb-6 font-semibold text-white ${
